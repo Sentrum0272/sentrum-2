@@ -42,12 +42,15 @@
   <script>
     const STORAGE_KEY = "acl_articles";
 
-    function loadArticles() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const articles = JSON.parse(raw || "[]");
+    async function loadArticles() {
+  const { data } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
 
-      return articles.filter(a => a.status === "published");
-    }
+  return data || [];
+}
 
     function renderBlog() {
       const listEl = document.getElementById("blog-list");
