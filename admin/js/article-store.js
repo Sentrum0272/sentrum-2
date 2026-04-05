@@ -209,31 +209,88 @@ async function getLeads() {
   return (data || []).map(mapLeadRow);
 }
 
+async function trackEvent(payload) {
+  const supabase = window.supabaseClient;
+
+  const insertData = {
+    article_id: payload.articleId || null,
+    event_type: payload.eventType || "page_view",
+    source: payload.source || "direct"
+  };
+
+  const { data, error } = await supabase
+    .from("tracking_events")
+    .insert([insertData])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+async function getTrackingEvents() {
+  const supabase = window.supabaseClient;
+
+  const { data, error } = await supabase
+    .from("tracking_events")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data || [];
+}
+
 async function getDashboardStats() {
-  const [articles, leads] = await Promise.all([
+  const [articles, leads, events] = await Promise.all([
     getArticles(),
-    getLeads()
+    getLeads(),
+    getTrackingEvents()
   ]);
 
   const published = articles.filter((article) => article.status === "published");
+
+  const totalPv = events.filter((event) => event.event_type === "page_view").length;
+  const totalLeads = leads.length;
+  const conversionRate =
+    totalPv > 0 ? Number(((totalLeads / totalPv) * 100).toFixed(2)) : 0;
+
+  const topArticles = published
+    .map((article) => {
+      const pv = events.filter(
+        (event) =>
+          event.article_id === article.id &&
+          event.event_type === "page_view"
+      ).length;
+
+      const articleLeads = leads.filter(
+        (lead) => lead.sourceArticleId === article.id
+      ).length;
+
+      return {
+        article,
+        analytics: {
+          pv,
+          leads: articleLeads,
+          conversionRate:
+            pv > 0 ? Number(((articleLeads / pv) * 100).toFixed(2)) : 0
+        }
+      };
+    })
+    .sort((a, b) => b.analytics.pv - a.analytics.pv)
+    .slice(0, 5);
 
   return {
     articles,
     published,
     leads,
-    analytics: [],
-    totalPv: 0,
-    totalLeads: leads.length,
+    events,
+    totalPv,
+    totalLeads,
     avgStaySeconds: 0,
-    conversionRate: 0,
-    topArticles: published.slice(0, 5).map((article) => ({
-      article,
-      analytics: {
-        pv: 0,
-        leads: leads.filter((lead) => lead.sourceArticleId === article.id).length,
-        conversionRate: 0
-      }
-    }))
+    conversionRate,
+    topArticles
   };
 }
 
@@ -249,5 +306,7 @@ window.ArticleStore = {
   getPublishedArticles,
   createLead,
   getLeads,
-  getDashboardStats
+  getDashboardStats,
+  trackEvent,
+  getTrackingEvents
 };
