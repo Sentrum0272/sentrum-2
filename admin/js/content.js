@@ -1,9 +1,39 @@
 document.addEventListener("DOMContentLoaded", () => {
-  AdminCommon.renderLayout("content", "內容管理", "管理文章欄位、SEO 設定與發布狀態。");
-  const root = document.getElementById("page-root");
+  initPage();
+});
 
-  function render() {
-    const articles = ArticleStore.getArticles();
+async function initPage() {
+  AdminCommon.renderLayout(
+    "content",
+    "內容管理",
+    "管理文章欄位、SEO 設定與發布狀態。"
+  );
+
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  await render();
+
+  async function render() {
+    let articles = [];
+    let leads = [];
+
+    try {
+      [articles, leads] = await Promise.all([
+        ArticleStore.getArticles(),
+        ArticleStore.getLeads()
+      ]);
+    } catch (error) {
+      console.error("載入文章資料失敗：", error);
+      root.innerHTML = `
+        <div class="card">
+          <div class="card__body">
+            <p>載入內容管理資料失敗：${error.message}</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
 
     root.innerHTML = `
       <div class="toolbar">
@@ -43,24 +73,22 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.innerHTML =
         list
           .map((article) => {
-            const analytics = ArticleStore.getAnalyticsByArticleId(article.id) || {
-              pv: 0,
-              leads: 0,
-              conversionRate: 0
-            };
+            const articleLeads = leads.filter(
+              (lead) => lead.sourceArticleId === article.id
+            ).length;
 
             return `
               <tr>
                 <td>
-                  <strong>${article.title}</strong>
+                  <strong>${escapeHtml(article.title)}</strong>
                   <div class="inline-meta">
-                    <span>slug: ${article.slug}</span>
+                    <span>slug: ${escapeHtml(article.slug)}</span>
                   </div>
                 </td>
                 <td>${AdminCommon.statusBadge(article.status)}</td>
-                <td>${article.category || "-"}</td>
-                <td>${analytics.pv || 0}</td>
-                <td>${analytics.leads || 0}</td>
+                <td>${escapeHtml(article.category || "-")}</td>
+                <td>0</td>
+                <td>${articleLeads}</td>
                 <td>${AdminCommon.formatDate(article.updatedAt)}</td>
                 <td>
                   <div class="table-actions">
@@ -84,45 +112,61 @@ document.addEventListener("DOMContentLoaded", () => {
       const keyword = e.target.value.trim().toLowerCase();
       const filtered = articles.filter(
         (item) =>
-          item.title.toLowerCase().includes(keyword) ||
+          (item.title || "").toLowerCase().includes(keyword) ||
           (item.summary || "").toLowerCase().includes(keyword)
       );
       drawRows(filtered);
     });
 
-    tbody.addEventListener("click", (e) => {
+    tbody.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
 
       const { action, id } = btn.dataset;
-      const article = ArticleStore.getArticles().find((item) => item.id === id);
+      const article = articles.find((item) => item.id === id);
       if (!article) return;
 
-      if (action === "view") return viewArticle(article);
-      if (action === "edit") return editArticle(article);
+      if (action === "view") {
+        viewArticle(article, leads);
+        return;
+      }
+
+      if (action === "edit") {
+        editArticle(article);
+        return;
+      }
 
       if (action === "publish") {
-        ArticleStore.updateArticle(id, {
-          status: article.status === "published" ? "draft" : "published"
-        });
-        return render();
+        try {
+          await ArticleStore.updateArticle(id, {
+            status: article.status === "published" ? "draft" : "published"
+          });
+          await render();
+        } catch (error) {
+          console.error("更新發布狀態失敗：", error);
+          alert(`更新失敗：${error.message}`);
+        }
+        return;
       }
 
       if (action === "delete") {
-        if (confirm(`確定刪除「${article.title}」？`)) {
-          ArticleStore.deleteArticle(id);
-          render();
+        if (!confirm(`確定刪除「${article.title}」？`)) return;
+
+        try {
+          await ArticleStore.deleteArticle(id);
+          await render();
+        } catch (error) {
+          console.error("刪除文章失敗：", error);
+          alert(`刪除失敗：${error.message}`);
         }
       }
     });
   }
 
-  function viewArticle(article) {
-    const analytics = ArticleStore.getAnalyticsByArticleId(article.id) || {
-      pv: 0,
-      leads: 0,
-      conversionRate: 0
-    };
+  function viewArticle(article, leads) {
+    const articleLeads = leads.filter(
+      (lead) => lead.sourceArticleId === article.id
+    ).length;
 
     AdminCommon.openModal({
       title: article.title,
@@ -131,24 +175,24 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="grid grid--2">
           <div>
             <strong>摘要</strong>
-            <p>${article.summary || "-"}</p>
+            <p>${escapeHtml(article.summary || "-")}</p>
           </div>
           <div>
             <strong>SEO</strong>
             <p>
-              SEO Title：${article.seoTitle || "-"}<br>
-              SEO Description：${article.seoDescription || "-"}
+              SEO Title：${escapeHtml(article.seoTitle || "-")}<br>
+              SEO Description：${escapeHtml(article.seoDescription || "-")}
             </p>
           </div>
         </div>
 
         <div class="inline-meta" style="margin:12px 0 16px;">
-          <span>PV：${analytics.pv || 0}</span>
-          <span>Leads：${analytics.leads || 0}</span>
-          <span>轉換率：${analytics.conversionRate || 0}%</span>
+          <span>PV：0</span>
+          <span>Leads：${articleLeads}</span>
+          <span>轉換率：-</span>
         </div>
 
-        <div style="line-height:1.85;color:#334155">${article.content}</div>
+        <div style="line-height:1.85;color:#334155">${article.content || ""}</div>
 
         <div style="margin-top:18px">
           <a class="btn btn--line" href="../article.html?slug=${article.slug}" target="_blank">前台預覽</a>
@@ -163,13 +207,41 @@ document.addEventListener("DOMContentLoaded", () => {
       subtitle: article.title,
       body: `
         <form id="edit-form" class="form-grid">
-          <div class="full"><label>標題</label><input class="input" name="title" value="${article.title}"></div>
-          <div><label>分類</label><input class="input" name="category" value="${article.category || ""}"></div>
-          <div><label>Slug</label><input class="input" name="slug" value="${article.slug}"></div>
-          <div class="full"><label>摘要</label><textarea class="textarea" name="summary">${article.summary || ""}</textarea></div>
-          <div class="full"><label>內容</label><textarea class="textarea" name="content" style="min-height:220px">${article.content || ""}</textarea></div>
-          <div class="full"><label>SEO Title</label><input class="input" name="seoTitle" value="${article.seoTitle || ""}"></div>
-          <div class="full"><label>SEO Description</label><textarea class="textarea" name="seoDescription">${article.seoDescription || ""}</textarea></div>
+          <div class="full">
+            <label>標題</label>
+            <input class="input" name="title" value="${escapeAttr(article.title)}">
+          </div>
+
+          <div>
+            <label>分類</label>
+            <input class="input" name="category" value="${escapeAttr(article.category || "")}">
+          </div>
+
+          <div>
+            <label>Slug</label>
+            <input class="input" name="slug" value="${escapeAttr(article.slug)}">
+          </div>
+
+          <div class="full">
+            <label>摘要</label>
+            <textarea class="textarea" name="summary">${escapeHtml(article.summary || "")}</textarea>
+          </div>
+
+          <div class="full">
+            <label>內容</label>
+            <textarea class="textarea" name="content" style="min-height:220px">${escapeHtml(article.content || "")}</textarea>
+          </div>
+
+          <div class="full">
+            <label>SEO Title</label>
+            <input class="input" name="seoTitle" value="${escapeAttr(article.seoTitle || "")}">
+          </div>
+
+          <div class="full">
+            <label>SEO Description</label>
+            <textarea class="textarea" name="seoDescription">${escapeHtml(article.seoDescription || "")}</textarea>
+          </div>
+
           <div>
             <label>狀態</label>
             <select class="select" name="status">
@@ -177,6 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <option value="published" ${article.status === "published" ? "selected" : ""}>已發布</option>
             </select>
           </div>
+
           <div style="display:flex;align-items:end">
             <button class="btn btn--primary" type="submit">儲存變更</button>
           </div>
@@ -184,14 +257,38 @@ document.addEventListener("DOMContentLoaded", () => {
       `
     });
 
-    document.getElementById("edit-form").addEventListener("submit", (e) => {
+    const form = document.getElementById("edit-form");
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
+
       const fd = new FormData(e.target);
-      ArticleStore.updateArticle(article.id, Object.fromEntries(fd.entries()));
-      AdminCommon.closeModal();
-      render();
+      const patch = Object.fromEntries(fd.entries());
+
+      try {
+        await ArticleStore.updateArticle(article.id, patch);
+        AdminCommon.closeModal();
+        await render();
+      } catch (error) {
+        console.error("更新文章失敗：", error);
+        alert(`儲存失敗：${error.message}`);
+      }
     });
   }
+}
 
-  render();
-});
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function escapeAttr(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
