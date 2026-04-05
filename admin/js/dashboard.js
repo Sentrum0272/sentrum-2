@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div class="card">
         <div class="card__body kpi">
           <div class="kpi__label">總瀏覽量（PV）</div>
-          <div class="kpi__value">0</div>
+          <div class="kpi__value">${stats.totalPv || 0}</div>
           <div class="kpi__sub">已發布文章 ${publishedCount} 篇</div>
         </div>
       </div>
@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       <div class="card">
         <div class="card__body kpi">
           <div class="kpi__label">轉換率</div>
-          <div class="kpi__value">-</div>
+          <div class="kpi__value">${stats.conversionRate || 0}%</div>
           <div class="kpi__sub">Leads / PV</div>
         </div>
       </div>
