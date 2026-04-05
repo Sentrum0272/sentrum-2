@@ -299,6 +299,49 @@ function trackEvent(payload) {
 
 ensureSeeds();
 
+function getDashboardStats() {
+  const articles = getArticles();
+  const published = articles.filter((article) => article.status === "published");
+  const leads = getLeads();
+  const analyticsList = getAnalytics();
+
+  const totalPv = analyticsList.reduce((sum, item) => sum + (Number(item.pv) || 0), 0);
+  const totalLeads = analyticsList.reduce((sum, item) => sum + (Number(item.leads) || 0), 0);
+  const avgStaySeconds = analyticsList.length
+    ? Math.round(
+        analyticsList.reduce((sum, item) => sum + (Number(item.avgStaySeconds) || 0), 0) /
+          analyticsList.length
+      )
+    : 0;
+
+  const conversionRate =
+    totalPv > 0 ? Number(((totalLeads / totalPv) * 100).toFixed(2)) : 0;
+
+  const topArticles = published
+    .map((article) => ({
+      article,
+      analytics: getAnalyticsByArticleId(article.id) || {
+        pv: 0,
+        leads: 0,
+        conversionRate: 0
+      }
+    }))
+    .sort((a, b) => (b.analytics.pv || 0) - (a.analytics.pv || 0))
+    .slice(0, 5);
+
+  return {
+    articles,
+    published,
+    leads,
+    analytics: analyticsList,
+    totalPv,
+    totalLeads,
+    avgStaySeconds,
+    conversionRate,
+    topArticles
+  };
+}
+
 window.ArticleStore = {
   KEYS,
   readTable,
@@ -314,6 +357,8 @@ window.ArticleStore = {
   getPublishedArticles,
   getAnalytics,
   getAnalyticsByArticleId,
+  getArticleAnalytics: getAnalyticsByArticleId,
+  getDashboardStats,
   incrementArticleMetric,
   createLead,
   getLeads,
