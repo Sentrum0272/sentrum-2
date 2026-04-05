@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", async () => {
   AdminCommon.renderLayout('analytics', '成效分析', '查看單篇文章的 PV、Leads 與轉換率。');
   const root = document.getElementById('page-root');
   const articles = await ArticleStore.getArticles();
