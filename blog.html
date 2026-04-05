@@ -36,25 +36,44 @@
   <div id="site-footer"></div>
 
   <script src="./assets/js/layout.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./admin/js/supabase.js"></script>
 
-  <script>
-    const STORAGE_KEY = "acl_articles";
+<script>
+  async function loadArticles() {
+    const supabase = window.supabaseClient;
+    if (!supabase) {
+      throw new Error("Supabase client 未載入");
+    }
 
-    async function loadArticles() {
-  const { data } = await supabase
-    .from("articles")
-    .select("*")
-    .eq("status", "published")
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("articles")
+      .select("*")
+      .eq("status", "published")
+      .order("published_at", { ascending: false });
 
-  return data || [];
-}
+    if (error) throw error;
 
-    function renderBlog() {
-      const listEl = document.getElementById("blog-list");
-      const articles = loadArticles();
+    return data || [];
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("zh-TW", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+  }
+
+  async function renderBlog() {
+    const listEl = document.getElementById("blog-list");
+
+    try {
+      const articles = await loadArticles();
 
       if (!articles.length) {
         listEl.innerHTML = "<p>目前尚無文章</p>";
@@ -64,16 +83,24 @@
       listEl.innerHTML = articles.map(article => `
         <a class="blog-card" href="./article.html?slug=${article.slug}">
           <div class="blog-card__body">
+            <div class="inline-meta" style="margin-bottom:10px;">
+              <span>${article.category || "文章"}</span>
+              <span>${formatDate(article.published_at || article.created_at)}</span>
+            </div>
             <h3>${article.title}</h3>
             <p>${article.summary || ""}</p>
             <span class="blog-card__more">閱讀更多 →</span>
           </div>
         </a>
       `).join("");
+    } catch (error) {
+      console.error("載入文章失敗：", error);
+      listEl.innerHTML = `<p>文章載入失敗：${error.message}</p>`;
     }
+  }
 
-    renderBlog();
-  </script>
+  renderBlog();
+</script>
 
 </body>
 </html>
