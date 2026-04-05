@@ -43,7 +43,7 @@
   async function loadArticles() {
     const supabase = window.supabaseClient;
     if (!supabase) {
-      throw new Error("Supabase client 未載入");
+      throw new Error("文章未載入");
     }
 
     const { data, error } = await supabase
