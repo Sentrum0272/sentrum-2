@@ -42,76 +42,83 @@
     </div>
   </main>
 
-  <div id="site-footer"></div>
+    <div id="site-footer"></div>
 
+  <script src="./admin/js/article-store.js"></script>
   <script src="./assets/js/layout.js"></script>
 
   <script>
-    const ARTICLE_KEY = "acl_articles";
-    const LEAD_KEY = "acl_leads";
-
     function getSlug() {
       const params = new URLSearchParams(window.location.search);
       return params.get("slug");
     }
 
+    function getSource() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("source") || "direct";
+    }
+
     function loadArticle() {
       const slug = getSlug();
-      const raw = localStorage.getItem(ARTICLE_KEY);
-      const articles = JSON.parse(raw || "[]");
-
-      return articles.find(a => a.slug === slug);
+      return ArticleStore.getArticleBySlug(slug);
     }
 
     function setSEO(article) {
       document.title = article.seoTitle || article.title;
 
       const meta = document.querySelector("meta[name='description']");
-      meta.setAttribute("content", article.seoDescription || article.summary || "");
+      if (meta) {
+        meta.setAttribute("content", article.seoDescription || article.summary || "");
+      }
     }
 
     function renderArticle() {
       const article = loadArticle();
 
       if (!article) {
-        document.getElementById("article-content").innerHTML = "<p>找不到文章</p>";
-        return;
+        document.getElementById("article-title").innerText = "找不到文章";
+        document.getElementById("article-content").innerHTML = "<p>目前找不到這篇文章內容。</p>";
+        return null;
       }
 
       document.getElementById("article-title").innerText = article.title;
       document.getElementById("article-content").innerHTML = article.content;
 
       setSEO(article);
+      return article;
     }
 
-    function saveLead(data) {
-      const raw = localStorage.getItem(LEAD_KEY);
-      const leads = JSON.parse(raw || "[]");
+    function trackPageView(article) {
+      if (!article) return;
 
-      leads.push({
-        id: "lead_" + Date.now(),
-        ...data,
-        createdAt: new Date().toISOString()
+      ArticleStore.trackEvent({
+        articleId: article.id,
+        eventType: "page_view",
+        source: getSource(),
+        meta: {
+          slug: article.slug
+        }
       });
-
-      localStorage.setItem(LEAD_KEY, JSON.stringify(leads));
     }
 
-    function bindForm() {
+    function bindForm(article) {
       const form = document.getElementById("lead-form");
+      if (!form || !article) return;
 
       form.addEventListener("submit", (e) => {
         e.preventDefault();
 
         const formData = new FormData(form);
-        const article = loadArticle();
 
-        saveLead({
+        ArticleStore.createLead({
           name: formData.get("name"),
-          contact: formData.get("contact"),
+          contactType: "text",
+          contactValue: formData.get("contact"),
           message: formData.get("message"),
           sourceArticleId: article.id,
-          sourceArticleTitle: article.title
+          sourceArticleTitle: article.title,
+          sourceChannel: getSource(),
+          status: "new"
         });
 
         alert("已送出，我們會盡快與您聯繫！");
@@ -119,8 +126,9 @@
       });
     }
 
-    renderArticle();
-    bindForm();
+    const article = renderArticle();
+    trackPageView(article);
+    bindForm(article);
   </script>
 
 </body>
