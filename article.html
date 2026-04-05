@@ -60,10 +60,17 @@
       return params.get("source") || "direct";
     }
 
-    function loadArticle() {
-      const slug = getSlug();
-      return ArticleStore.getArticleBySlug(slug);
-    }
+    async function loadArticle() {
+  const slug = getSlug();
+
+  const { data } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  return data;
+}
 
     function setSEO(article) {
       document.title = article.seoTitle || article.title;
