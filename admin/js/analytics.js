@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   AdminCommon.renderLayout('analytics', '成效分析', '查看單篇文章的 PV、Leads 與轉換率。');
   const root = document.getElementById('page-root');
-  const articles = ArticleStore.getArticles();
+  const articles = await ArticleStore.getArticles();
   const options = articles.map(item => `<option value="${item.id}">${item.title}</option>`).join('');
   root.innerHTML = `
     <div class="card"><div class="card__body">
