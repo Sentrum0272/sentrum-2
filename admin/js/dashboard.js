@@ -170,6 +170,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   <th>姓名</th>
                   <th>聯絡方式</th>
                   <th>來源文章</th>
+                  <th>狀態</th>
                   <th>時間</th>
                 </tr>
               </thead>
