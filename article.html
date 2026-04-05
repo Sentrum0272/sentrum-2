@@ -24,6 +24,9 @@
 
       <h1 id="article-title"></h1>
       <div id="article-content" class="article-content"></div>
+      
+      <h3>延伸閱讀</h3>
+<ul id="related-articles"></ul>
 
       <!-- CTA -->
       <div class="article-cta">
@@ -158,10 +161,29 @@
       }
     });
   }
+  
+  async function renderRelatedArticles(currentSlug) {
+  const articles = await ArticleStore.getArticles();
+
+  const list = articles
+    .filter(a => a.slug !== currentSlug && a.status === "published")
+    .slice(0, 5);
+
+  const el = document.getElementById("related-articles");
+
+  el.innerHTML = list.map(a => `
+    <li>
+      <a href="./article.html?slug=${a.slug}">
+        ${a.title}
+      </a>
+    </li>
+  `).join("");
+}
 
   async function initArticlePage() {
     const article = await renderArticle();
     await trackPageView(article);
+    await renderRelatedArticles(article.slug);
     bindForm(article);
   }
 
