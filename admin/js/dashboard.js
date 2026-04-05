@@ -35,19 +35,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("") || `<tr><td colspan="5">目前尚無資料</td></tr>`;
 
   const leadRows =
-    latestLeads
-      .map(
-        (lead) => `
-        <tr>
-          <td>${lead.name || "-"}</td>
-          <td>${lead.contact || "-"}</td>
-          <td>${lead.sourceArticleTitle || "-"}</td>
-          <td>${AdminCommon.statusBadge("new")}</td>
-          <td>${AdminCommon.formatDate(lead.createdAt)}</td>
-        </tr>
-      `
-      )
-      .join("") || `<tr><td colspan="5">目前尚無名單</td></tr>`;
+  latestLeads
+    .map(
+      (lead) => `
+      <tr>
+        <td>${lead.name || "-"}</td>
+        <td>${lead.contact || "-"}</td>
+        <td>${lead.sourceArticleTitle || "-"}</td>
+        <td>${AdminCommon.statusBadge(lead.status || "new")}</td>
+        <td>${AdminCommon.formatDate(lead.createdAt)}</td>
+      </tr>
+    `
+    )
+    .join("") || `<tr><td colspan="5">目前尚無名單</td></tr>`;
 
   // 👉 現在沒有 analytics table，先用 leads 當指標
   const chartData = (stats.published || []).slice(0, 6).map((article) => {
