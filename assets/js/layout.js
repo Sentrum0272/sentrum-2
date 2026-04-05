@@ -31,6 +31,28 @@ function getCurrentPageKey() {
   return fileName.replace(".html", "");
 }
 
+function isEnglishPage() {
+  return window.location.pathname.includes("/en/");
+}
+
+function isBlogLikePage() {
+  const currentKey = getCurrentPageKey();
+  return currentKey === "blog" || currentKey === "article";
+}
+
+function toggleBlogNav(headerRoot) {
+  if (!headerRoot) return;
+
+  const blogLink = headerRoot.querySelector("[data-blog-link]");
+  if (!blogLink) return;
+
+  if (isEnglishPage()) {
+    blogLink.style.display = "none";
+  } else {
+    blogLink.style.display = "";
+  }
+}
+
 function setActiveNav(headerRoot) {
   if (!headerRoot) return;
 
@@ -80,26 +102,39 @@ function bindLangSwitcher(headerRoot) {
 
   const body = document.body;
   const pathname = window.location.pathname;
-  const isEnglishPage = pathname.includes("/en/");
+  const englishPage = isEnglishPage();
+  const blogPage = isBlogLikePage();
 
   console.log("[lang]", {
     pathname,
-    isEnglishPage,
+    englishPage,
+    blogPage,
     zhUrl: body.dataset.zhUrl,
     enUrl: body.dataset.enUrl
   });
 
-  if (isEnglishPage) {
+  if (englishPage) {
     const zhUrl = body.dataset.zhUrl || "../index.html";
     langLink.setAttribute("href", zhUrl);
     langLink.textContent = "中文";
     langLink.setAttribute("aria-label", "Switch to Traditional Chinese");
-  } else {
-    const enUrl = body.dataset.enUrl || "./en/index.html";
-    langLink.setAttribute("href", enUrl);
+    return;
+  }
+
+  // 中文頁
+  // 如果是 blog / article，切英文直接回英文首頁
+  if (blogPage) {
+    const blogFallbackEnUrl = body.dataset.blogEnFallback || "../en/index.html";
+    langLink.setAttribute("href", blogFallbackEnUrl);
     langLink.textContent = "EN";
     langLink.setAttribute("aria-label", "Switch to English");
+    return;
   }
+
+  const enUrl = body.dataset.enUrl || "./en/index.html";
+  langLink.setAttribute("href", enUrl);
+  langLink.textContent = "EN";
+  langLink.setAttribute("aria-label", "Switch to English");
 }
 
 function initBackToTop() {
@@ -148,6 +183,7 @@ async function initSharedHeader() {
   const headerRoot = document.querySelector("#site-header");
   if (!headerRoot) return;
 
+  toggleBlogNav(headerRoot);
   setActiveNav(headerRoot);
   bindMobileNav(headerRoot);
   bindLangSwitcher(headerRoot);
