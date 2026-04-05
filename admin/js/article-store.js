@@ -38,6 +38,7 @@ function mapLeadRow(row) {
     message: row.message || "",
     sourceArticleId: row.source_article_id || "",
     sourceArticleTitle: row.source_article_title || "",
+    status: row.status || "new",
     createdAt: row.created_at
   };
 }
@@ -182,7 +183,8 @@ async function createLead(payload) {
     contact: payload.contactValue || payload.contact || "",
     message: payload.message || "",
     source_article_id: payload.sourceArticleId || null,
-    source_article_title: payload.sourceArticleTitle || ""
+    source_article_title: payload.sourceArticleTitle || "",
+    status: payload.status || "new"
   };
 
   const { data, error } = await supabase
@@ -240,6 +242,21 @@ async function getTrackingEvents() {
   if (error) throw error;
 
   return data || [];
+}
+
+async function updateLeadStatus(id, status) {
+  const supabase = window.supabaseClient;
+
+  const { data, error } = await supabase
+    .from("leads")
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data;
 }
 
 async function getDashboardStats() {
@@ -308,5 +325,6 @@ window.ArticleStore = {
   getLeads,
   getDashboardStats,
   trackEvent,
-  getTrackingEvents
+  getTrackingEvents,
+  updateLeadStatus
 };
