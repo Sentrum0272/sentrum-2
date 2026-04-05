@@ -1,0 +1,61 @@
+/* ===== Blog Grid ===== */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-top: 40px;
+}
+
+/* ===== Card ===== */
+.blog-card {
+  display: block;
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(0,0,0,0.05);
+
+  transition: all 0.25s ease;
+}
+
+.blog-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+
+/* ===== Title ===== */
+.blog-card h3 {
+  font-size: 20px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  color: #0f172a; /* 深藍 */
+}
+
+/* ===== Summary ===== */
+.blog-card p {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* ===== Read More ===== */
+.blog-card__more {
+  font-size: 13px;
+  color: #c9a34e; /* 金色 */
+  font-weight: 500;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1024px) {
+  .blog-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .blog-grid {
+    grid-template-columns: 1fr;
+  }
+}
