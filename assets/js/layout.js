@@ -21,11 +21,6 @@ function getComponentPath(fileName) {
   return `./components/${fileName}`;
 }
 
-function normalizePath(path) {
-  if (!path) return "/";
-  return path.replace(/index\.html$/, "").replace(/\/+$/, "") || "/";
-}
-
 function getCurrentPageKey() {
   const fileName = window.location.pathname.split("/").pop() || "index.html";
   return fileName.replace(".html", "");
@@ -46,6 +41,7 @@ function toggleBlogNav(headerRoot) {
   const blogLink = headerRoot.querySelector("[data-blog-link]");
   if (!blogLink) return;
 
+  // 英文站隱藏文章
   if (isEnglishPage()) {
     blogLink.style.display = "none";
   } else {
@@ -101,17 +97,8 @@ function bindLangSwitcher(headerRoot) {
   if (!langLink) return;
 
   const body = document.body;
-  const pathname = window.location.pathname;
   const englishPage = isEnglishPage();
   const blogPage = isBlogLikePage();
-
-  console.log("[lang]", {
-    pathname,
-    englishPage,
-    blogPage,
-    zhUrl: body.dataset.zhUrl,
-    enUrl: body.dataset.enUrl
-  });
 
   if (englishPage) {
     const zhUrl = body.dataset.zhUrl || "../index.html";
@@ -121,16 +108,16 @@ function bindLangSwitcher(headerRoot) {
     return;
   }
 
-  // 中文頁
-  // 如果是 blog / article，切英文直接回英文首頁
+  // 中文文章頁 / 文章列表頁 → 切英文直接回英文首頁
   if (blogPage) {
-    const blogFallbackEnUrl = body.dataset.blogEnFallback || "../en/index.html";
-    langLink.setAttribute("href", blogFallbackEnUrl);
+    const blogEnFallback = body.dataset.blogEnFallback || "./en/index.html";
+    langLink.setAttribute("href", blogEnFallback);
     langLink.textContent = "EN";
     langLink.setAttribute("aria-label", "Switch to English");
     return;
   }
 
+  // 中文一般頁 → 正常切英文對應頁
   const enUrl = body.dataset.enUrl || "./en/index.html";
   langLink.setAttribute("href", enUrl);
   langLink.textContent = "EN";
