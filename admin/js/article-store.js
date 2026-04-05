@@ -270,6 +270,7 @@ async function getDashboardStats() {
 
   const totalPv = events.filter((event) => event.event_type === "page_view").length;
   const totalLeads = leads.length;
+
   const conversionRate =
     totalPv > 0 ? Number(((totalLeads / totalPv) * 100).toFixed(2)) : 0;
 
@@ -290,8 +291,7 @@ async function getDashboardStats() {
         analytics: {
           pv,
           leads: articleLeads,
-          conversionRate:
-            pv > 0 ? Number(((articleLeads / pv) * 100).toFixed(2)) : 0
+          conversionRate: pv > 0 ? Number(((articleLeads / pv) * 100).toFixed(2)) : 0
         }
       };
     })
