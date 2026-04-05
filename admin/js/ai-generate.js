@@ -6,6 +6,11 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const root = document.getElementById("page-root");
+  if (!root) {
+    console.error("#page-root 不存在");
+    return;
+  }
+
   const supabase = window.supabaseClient;
 
   if (!supabase) {
@@ -74,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("generate-form");
   const preview = document.getElementById("generate-preview");
   let generated = null;
+  let isSubmitting = false;
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -146,7 +152,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   async function applyGenerated(status) {
-    if (!generated) return;
+    if (!generated || isSubmitting) return;
+    isSubmitting = true;
 
     const now = new Date().toISOString();
 
@@ -159,29 +166,32 @@ document.addEventListener("DOMContentLoaded", () => {
       status,
       seo_title: generated.seoTitle,
       seo_description: generated.seoDescription,
-      published_at: status === "published" ? now : null,
-      updated_at: now
+      created_at: now,
+      updated_at: now,
+      published_at: status === "published" ? now : null
     };
 
-    const { data, error } = await supabase
-      .from("articles")
-      .insert([payload])
-      .select()
-      .single();
+    try {
+      const { error } = await supabase
+        .from("articles")
+        .insert([payload]);
 
-    if (error) {
-      console.error("新增文章失敗：", error);
-      alert(`新增文章失敗：${error.message}`);
-      return;
+      if (error) {
+        console.error("新增文章失敗：", error);
+        alert(`新增文章失敗：${error.message}`);
+        return;
+      }
+
+      alert(
+        status === "published"
+          ? "文章已發布，前台 blog 可看到。"
+          : "已建立草稿，請到內容管理編輯。"
+      );
+
+      window.location.href = "./content.html";
+    } finally {
+      isSubmitting = false;
     }
-
-    alert(
-      status === "published"
-        ? "文章已發布，前台 blog 可看到。"
-        : "已建立草稿，請到內容管理編輯。"
-    );
-
-    window.location.href = "./content.html";
   }
 
   function slugify(text = "") {
