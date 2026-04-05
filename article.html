@@ -44,101 +44,114 @@
 
     <div id="site-footer"></div>
 
-  <script src="./admin/js/article-store.js"></script>
-  <script src="./assets/js/layout.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./admin/js/supabase.js"></script>
+<script src="./admin/js/article-store.js"></script>
+<script src="./assets/js/layout.js"></script>
 
-  <script>
-    function getSlug() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("slug");
+<script>
+  function getSlug() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("slug");
+  }
+
+  function getSource() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("source") || "direct";
+  }
+
+  async function loadArticle() {
+    const supabase = window.supabaseClient;
+    if (!supabase) {
+      throw new Error("Supabase client 未載入");
     }
 
-    function getSource() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("source") || "direct";
+    const slug = getSlug();
+
+    const { data, error } = await supabase
+      .from("articles")
+      .select("*")
+      .eq("slug", slug)
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  }
+
+  function setSEO(article) {
+    document.title = article.seo_title || article.title || "文章｜Aplus";
+
+    const meta = document.querySelector("meta[name='description']");
+    if (meta) {
+      meta.setAttribute(
+        "content",
+        article.seo_description || article.summary || ""
+      );
     }
+  }
 
-    async function loadArticle() {
-  const slug = getSlug();
+  async function renderArticle() {
+    const titleEl = document.getElementById("article-title");
+    const contentEl = document.getElementById("article-content");
 
-  const { data } = await supabase
-    .from("articles")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  return data;
-}
-
-    function setSEO(article) {
-      document.title = article.seo_title || article.title;
-
-      const meta = document.querySelector("meta[name='description']");
-      if (meta) {
-        meta.setAttribute("content", article.seo_description || article.summary || "");
-      }
-    }
-
-    function renderArticle() {
-      const article = loadArticle();
+    try {
+      const article = await loadArticle();
 
       if (!article) {
-        document.getElementById("article-title").innerText = "找不到文章";
-        document.getElementById("article-content").innerHTML = "<p>目前找不到這篇文章內容。</p>";
+        titleEl.innerText = "找不到文章";
+        contentEl.innerHTML = "<p>目前找不到這篇文章內容。</p>";
         return null;
       }
 
-      document.getElementById("article-title").innerText = article.title;
-      document.getElementById("article-content").innerHTML = article.content;
+      titleEl.innerText = article.title || "未命名文章";
+      contentEl.innerHTML = article.content || "<p>目前尚無內容。</p>";
 
       setSEO(article);
       return article;
+    } catch (error) {
+      console.error("載入文章失敗：", error);
+      titleEl.innerText = "載入失敗";
+      contentEl.innerHTML = `<p>文章載入失敗：${error.message}</p>`;
+      return null;
     }
+  }
 
-    function trackPageView(article) {
-      if (!article) return;
+  function bindForm(article) {
+    const form = document.getElementById("lead-form");
+    if (!form || !article) return;
 
-      ArticleStore.trackEvent({
-        articleId: article.id,
-        eventType: "page_view",
-        source: getSource(),
-        meta: {
-          slug: article.slug
-        }
-      });
-    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    function bindForm(article) {
-      const form = document.getElementById("lead-form");
-      if (!form || !article) return;
+      const formData = new FormData(form);
 
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-
-        const formData = new FormData(form);
-
-        ArticleStore.createLead({
+      try {
+        await ArticleStore.createLead({
           name: formData.get("name"),
-          contactType: "text",
           contactValue: formData.get("contact"),
           message: formData.get("message"),
           sourceArticleId: article.id,
           sourceArticleTitle: article.title,
-          sourceChannel: getSource(),
-          status: "new"
+          sourceChannel: getSource()
         });
 
         alert("已送出，我們會盡快與您聯繫！");
         form.reset();
-      });
-    }
+      } catch (error) {
+        console.error("送出詢問失敗：", error);
+        alert(`送出失敗：${error.message}`);
+      }
+    });
+  }
 
-    const article = renderArticle();
-    trackPageView(article);
+  async function initArticlePage() {
+    const article = await renderArticle();
     bindForm(article);
-  </script>
+  }
+
+  initArticlePage();
+</script>
 
 </body>
 </html>
