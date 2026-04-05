@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>文章｜Aplus</title>
+  <meta name="description" content="" />
+
+  <link rel="stylesheet" href="./assets/css/base.css" />
+  <link rel="stylesheet" href="./assets/css/layout.css" />
+  <link rel="stylesheet" href="./assets/css/components.css" />
+  <link rel="stylesheet" href="./assets/css/pages/article.css" />
+</head>
+
+<body data-en-url="./en/index.html" data-blog-en-fallback="./en/index.html">
+
+  <div id="site-header"></div>
+
+  <main class="section-shell">
+    <div class="container article">
+
+      <h1 id="article-title"></h1>
+      <div id="article-content" class="article-content"></div>
+
+      <!-- CTA -->
+      <div class="article-cta">
+        <h3>需要專業攝影棚或虛擬製作方案？</h3>
+        <p>歡迎留下資料，我們將提供最適合您的建議。</p>
+      </div>
+
+      <!-- 表單 -->
+      <form id="lead-form" class="lead-form">
+        <input type="text" name="name" placeholder="姓名" required />
+        <input type="text" name="contact" placeholder="聯絡方式" required />
+        <textarea name="message" placeholder="需求內容"></textarea>
+        <button type="submit" class="btn btn--primary">送出詢問</button>
+      </form>
+
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="./assets/js/layout.js"></script>
+
+  <script>
+    const ARTICLE_KEY = "acl_articles";
+    const LEAD_KEY = "acl_leads";
+
+    function getSlug() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("slug");
+    }
+
+    function loadArticle() {
+      const slug = getSlug();
+      const raw = localStorage.getItem(ARTICLE_KEY);
+      const articles = JSON.parse(raw || "[]");
+
+      return articles.find(a => a.slug === slug);
+    }
+
+    function setSEO(article) {
+      document.title = article.seoTitle || article.title;
+
+      const meta = document.querySelector("meta[name='description']");
+      meta.setAttribute("content", article.seoDescription || article.summary || "");
+    }
+
+    function renderArticle() {
+      const article = loadArticle();
+
+      if (!article) {
+        document.getElementById("article-content").innerHTML = "<p>找不到文章</p>";
+        return;
+      }
+
+      document.getElementById("article-title").innerText = article.title;
+      document.getElementById("article-content").innerHTML = article.content;
+
+      setSEO(article);
+    }
+
+    function saveLead(data) {
+      const raw = localStorage.getItem(LEAD_KEY);
+      const leads = JSON.parse(raw || "[]");
+
+      leads.push({
+        id: "lead_" + Date.now(),
+        ...data,
+        createdAt: new Date().toISOString()
+      });
+
+      localStorage.setItem(LEAD_KEY, JSON.stringify(leads));
+    }
+
+    function bindForm() {
+      const form = document.getElementById("lead-form");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const article = loadArticle();
+
+        saveLead({
+          name: formData.get("name"),
+          contact: formData.get("contact"),
+          message: formData.get("message"),
+          sourceArticleId: article.id,
+          sourceArticleTitle: article.title
+        });
+
+        alert("已送出，我們會盡快與您聯繫！");
+        form.reset();
+      });
+    }
+
+    renderArticle();
+    bindForm();
+  </script>
+
+</body>
+</html>
