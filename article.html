@@ -117,6 +117,20 @@
     }
   }
 
+  async function trackPageView(article) {
+    if (!article) return;
+
+    try {
+      await ArticleStore.trackEvent({
+        articleId: article.id,
+        eventType: "page_view",
+        source: getSource()
+      });
+    } catch (error) {
+      console.error("記錄 PV 失敗：", error);
+    }
+  }
+
   function bindForm(article) {
     const form = document.getElementById("lead-form");
     if (!form || !article) return;
@@ -144,28 +158,14 @@
       }
     });
   }
-  
-  async function trackPageView(article) {
-  if (!article) return;
-
-  try {
-    await ArticleStore.trackEvent({
-      articleId: article.id,
-      eventType: "page_view",
-      source: getSource()
-    });
-  } catch (error) {
-    console.error("記錄 PV 失敗：", error);
-  }
-}
 
   async function initArticlePage() {
-  const article = await renderArticle();
-  await trackPageView(article);
-  bindForm(article);
-}
+    const article = await renderArticle();
+    await trackPageView(article);
+    bindForm(article);
+  }
 
-initArticlePage();
+  initArticlePage();
 </script>
 
 </body>
