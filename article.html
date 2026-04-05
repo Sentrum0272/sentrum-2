@@ -73,11 +73,11 @@
 }
 
     function setSEO(article) {
-      document.title = article.seoTitle || article.title;
+      document.title = article.seo_title || article.title;
 
       const meta = document.querySelector("meta[name='description']");
       if (meta) {
-        meta.setAttribute("content", article.seoDescription || article.summary || "");
+        meta.setAttribute("content", article.seo_description || article.summary || "");
       }
     }
 
