@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>文章專區｜Aplus</title>
+  <meta name="description" content="Aplus 提供虛擬攝影棚、攝影棚租借與製作相關內容文章。" />
+
+  <link rel="stylesheet" href="./assets/css/base.css" />
+  <link rel="stylesheet" href="./assets/css/layout.css" />
+  <link rel="stylesheet" href="./assets/css/components.css" />
+  <link rel="stylesheet" href="./assets/css/pages/blog.css" />
+</head>
+
+<body data-en-url="./en/index.html" data-blog-en-fallback="./en/index.html">
+
+  <div id="site-header"></div>
+
+  <main class="section-shell">
+    <div class="container">
+
+      <div class="section-heading">
+        <h1 class="section-title">文章專區</h1>
+        <p class="section-subtitle">
+          探索虛擬攝影棚、節目製作與內容行銷相關知識
+        </p>
+      </div>
+
+      <div id="blog-list" class="blog-grid"></div>
+
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script src="./assets/js/layout.js"></script>
+
+  <script>
+    const STORAGE_KEY = "acl_articles";
+
+    function loadArticles() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const articles = JSON.parse(raw || "[]");
+
+      return articles.filter(a => a.status === "published");
+    }
+
+    function renderBlog() {
+      const listEl = document.getElementById("blog-list");
+      const articles = loadArticles();
+
+      if (!articles.length) {
+        listEl.innerHTML = "<p>目前尚無文章</p>";
+        return;
+      }
+
+      listEl.innerHTML = articles.map(article => `
+        <a class="blog-card" href="./article.html?slug=${article.slug}">
+          <div class="blog-card__body">
+            <h3>${article.title}</h3>
+            <p>${article.summary || ""}</p>
+            <span class="blog-card__more">閱讀更多 →</span>
+          </div>
+        </a>
+      `).join("");
+    }
+
+    renderBlog();
+  </script>
+
+</body>
+</html>
