@@ -11,7 +11,7 @@ async function initPage() {
   AdminCommon.renderLayout(
     "content",
     "內容管理",
-    "管理文章欄位、SEO 設定與發布狀態。"
+    "管理文章欄位、SEO 設定、排程發佈與發布狀態。"
   );
 
   const root = document.getElementById("page-root");
@@ -82,6 +82,11 @@ async function initPage() {
               (lead) => lead.sourceArticleId === article.id
             ).length;
 
+            const scheduleMeta =
+              article.status === "scheduled" && article.scheduledAt
+                ? `<div class="inline-meta"><span>排程：${AdminCommon.formatDate(article.scheduledAt)}</span></div>`
+                : "";
+
             return `
               <tr>
                 <td>
@@ -89,6 +94,7 @@ async function initPage() {
                   <div class="inline-meta">
                     <span>slug: ${escapeHtml(article.slug)}</span>
                   </div>
+                  ${scheduleMeta}
                 </td>
                 <td>${AdminCommon.statusBadge(article.status)}</td>
                 <td>${escapeHtml(article.category || "-")}</td>
@@ -143,9 +149,18 @@ async function initPage() {
 
       if (action === "publish") {
         try {
-          await ArticleStore.updateArticle(id, {
-            status: article.status === "published" ? "draft" : "published"
-          });
+          if (article.status === "published") {
+            await ArticleStore.updateArticle(id, {
+              status: "draft",
+              scheduledAt: null
+            });
+          } else {
+            await ArticleStore.updateArticle(id, {
+              status: "published",
+              scheduledAt: null
+            });
+          }
+
           await render();
         } catch (error) {
           console.error("更新發布狀態失敗：", error);
@@ -173,6 +188,11 @@ async function initPage() {
       (lead) => lead.sourceArticleId === article.id
     ).length;
 
+    const scheduledInfo =
+      article.scheduledAt
+        ? `<span>排程時間：${AdminCommon.formatDate(article.scheduledAt)}</span>`
+        : `<span>排程時間：-</span>`;
+
     AdminCommon.openModal({
       title: article.title,
       subtitle: `狀態：${article.status}｜Slug：${article.slug}`,
@@ -195,6 +215,7 @@ async function initPage() {
           <span>PV：0</span>
           <span>Leads：${articleLeads}</span>
           <span>轉換率：-</span>
+          ${scheduledInfo}
         </div>
 
         <div style="line-height:1.85;color:#334155">${article.content || ""}</div>
@@ -249,10 +270,29 @@ async function initPage() {
 
           <div>
             <label>狀態</label>
-            <select class="select" name="status">
+            <select class="select" name="status" id="article-status-select">
               <option value="draft" ${article.status === "draft" ? "selected" : ""}>草稿</option>
+              <option value="scheduled" ${article.status === "scheduled" ? "selected" : ""}>排程中</option>
               <option value="published" ${article.status === "published" ? "selected" : ""}>已發布</option>
             </select>
+          </div>
+
+          <div>
+            <label>排程發佈時間</label>
+            <input
+              class="input"
+              type="datetime-local"
+              name="scheduledAt"
+              id="scheduled-at-input"
+              value="${formatDateTimeLocal(article.scheduledAt)}"
+            >
+          </div>
+
+          <div class="full" style="padding:12px 14px;border-radius:12px;background:#f8fafc;color:var(--muted);line-height:1.8;">
+            <strong style="color:#0f172a;">使用說明：</strong><br>
+            1. 若狀態選擇 <strong>排程中</strong>，請務必填寫排程發佈時間。<br>
+            2. 若狀態為 <strong>已發布</strong>，系統會忽略排程時間並立即視為已上線。<br>
+            3. 若狀態為 <strong>草稿</strong>，排程時間可留空。
           </div>
 
           <div style="display:flex;align-items:end">
@@ -263,13 +303,47 @@ async function initPage() {
     });
 
     const form = document.getElementById("edit-form");
+    const statusSelect = document.getElementById("article-status-select");
+    const scheduledInput = document.getElementById("scheduled-at-input");
+
     if (!form) return;
+
+    function syncScheduledField() {
+      if (!statusSelect || !scheduledInput) return;
+
+      if (statusSelect.value === "scheduled") {
+        scheduledInput.required = true;
+        scheduledInput.disabled = false;
+      } else if (statusSelect.value === "published") {
+        scheduledInput.required = false;
+        scheduledInput.disabled = true;
+      } else {
+        scheduledInput.required = false;
+        scheduledInput.disabled = false;
+      }
+    }
+
+    statusSelect?.addEventListener("change", syncScheduledField);
+    syncScheduledField();
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const fd = new FormData(e.target);
       const patch = Object.fromEntries(fd.entries());
+
+      if (patch.status === "scheduled" && !patch.scheduledAt) {
+        alert("請先設定排程發佈時間");
+        return;
+      }
+
+      if (patch.status === "published") {
+        patch.scheduledAt = null;
+      }
+
+      if (patch.status === "draft" && !patch.scheduledAt) {
+        patch.scheduledAt = null;
+      }
 
       try {
         await ArticleStore.updateArticle(article.id, patch);
@@ -281,6 +355,22 @@ async function initPage() {
       }
     });
   }
+}
+
+function formatDateTimeLocal(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hour = pad(d.getHours());
+  const minute = pad(d.getMinutes());
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 }
 
 function escapeHtml(value = "") {
