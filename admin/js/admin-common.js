@@ -19,6 +19,7 @@ function renderLayout(pageKey, pageTitle, pageDesc = "") {
           <a class="nav-link ${active("analytics")}" href="./analytics.html">成效分析</a>
           <a class="nav-link ${active("leads")}" href="./leads.html">詢問名單</a>
           <a class="nav-link ${active("generate")}" href="./ai-generate.html">AI 內容生成</a>
+          <a class="nav-link ${active("auto-generate")}" href="./auto-generate.html">自動產文</a>
         </nav>
 
         <div class="nav-footer">
