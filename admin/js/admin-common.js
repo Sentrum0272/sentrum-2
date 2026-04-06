@@ -20,6 +20,10 @@ function renderLayout(pageKey, pageTitle, pageDesc = '') {
     </aside>
     <div class="main">
       <header class="topbar">
+      async function logout() {
+  await window.supabaseClient.auth.signOut();
+  window.location.href = "./login.html";
+}
         <div class="topbar__title">
           <h1>${pageTitle}</h1>
           <p>${pageDesc}</p>
