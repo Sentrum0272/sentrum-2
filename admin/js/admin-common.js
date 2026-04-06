@@ -95,15 +95,16 @@ function escapeHtml(text = "") {
 
 function statusBadge(status) {
   const map = {
-    draft: ["草稿", "badge--muted"],
-    published: ["已發布", "badge--success"],
-    archived: ["已封存", "badge--warning"],
-    new: ["未處理", "badge--muted"],
-    contacted: ["已聯絡", "badge--soft"],
-    negotiating: ["成交中", "badge--warning"],
-    won: ["已成交", "badge--success"],
-    lost: ["未成交", "badge--danger"]
-  };
+  draft: ['草稿', 'badge--muted'],
+  published: ['已發布', 'badge--success'],
+  scheduled: ['排程中', 'badge--warning'],
+  archived: ['已封存', 'badge--warning'],
+  new: ['未處理', 'badge--muted'],
+  contacted: ['已聯絡', 'badge--soft'],
+  negotiating: ['成交中', 'badge--warning'],
+  won: ['已成交', 'badge--success'],
+  lost: ['未成交', 'badge--danger']
+};
 
   const [label, cls] = map[status] || [status || "-", "badge--muted"];
   return `<span class="badge ${cls}">${label}</span>`;
