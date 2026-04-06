@@ -41,9 +41,15 @@ async function initPage() {
     }
 
     root.innerHTML = `
-      <div class="toolbar">
-        <div class="toolbar__left">
+      <div class="toolbar" style="gap:12px;flex-wrap:wrap;">
+        <div class="toolbar__left" style="display:flex;gap:12px;flex-wrap:wrap;">
           <input id="search-input" class="input" style="width:280px" placeholder="搜尋文章標題">
+          <select id="status-filter" class="select" style="width:180px">
+            <option value="all">全部狀態</option>
+            <option value="draft">草稿</option>
+            <option value="scheduled">排程中</option>
+            <option value="published">已發布</option>
+          </select>
         </div>
         <div class="toolbar__right">
           <a class="btn btn--primary" href="./ai-generate.html">新增文章</a>
@@ -74,6 +80,8 @@ async function initPage() {
     `;
 
     const tbody = document.getElementById("article-tbody");
+    const searchInput = document.getElementById("search-input");
+    const statusFilter = document.getElementById("status-filter");
 
     const drawRows = (list) => {
       tbody.innerHTML =
@@ -113,17 +121,28 @@ async function initPage() {
           .join("") || `<tr><td colspan="8">目前沒有文章</td></tr>`;
     };
 
+    function applyFilters() {
+      const keyword = (searchInput?.value || "").trim().toLowerCase();
+      const status = statusFilter?.value || "all";
+
+      const filtered = articles.filter((item) => {
+        const matchKeyword =
+          (item.title || "").toLowerCase().includes(keyword) ||
+          (item.summary || "").toLowerCase().includes(keyword);
+
+        const matchStatus =
+          status === "all" ? true : item.status === status;
+
+        return matchKeyword && matchStatus;
+      });
+
+      drawRows(filtered);
+    }
+
     drawRows(articles);
 
-    document.getElementById("search-input").addEventListener("input", (e) => {
-      const keyword = e.target.value.trim().toLowerCase();
-      const filtered = articles.filter(
-        (item) =>
-          (item.title || "").toLowerCase().includes(keyword) ||
-          (item.summary || "").toLowerCase().includes(keyword)
-      );
-      drawRows(filtered);
-    });
+    searchInput?.addEventListener("input", applyFilters);
+    statusFilter?.addEventListener("change", applyFilters);
 
     tbody.addEventListener("click", async (e) => {
       const btn = e.target.closest("[data-action]");
