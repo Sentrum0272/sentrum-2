@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+  
+  if (window.__adminGuardPromise) {
+    const session = await window.__adminGuardPromise;
+    if (!session) return;
+  }
+
+  
   initPage();
 });
 
