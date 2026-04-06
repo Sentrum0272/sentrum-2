@@ -68,9 +68,10 @@ document.addEventListener("DOMContentLoaded", async () => {
               </div>
 
               <div>
-                <label>頻率</label>
+                <label>自動生成頻率</label>
                 <select class="select" name="frequency">
-                  <option value="daily" ${settings?.frequency === "daily" ? "selected" : ""}>每天一篇</option>
+                  <option value="unlimited" ${settings?.frequency === "unlimited" ? "selected" : ""}>不設頻率（自由生成）</option>
+                  <option value="daily" ${(settings?.frequency || "daily") === "daily" ? "selected" : ""}>每天一篇</option>
                   <option value="every_2_days" ${settings?.frequency === "every_2_days" ? "selected" : ""}>每兩天一篇</option>
                   <option value="weekly" ${settings?.frequency === "weekly" ? "selected" : ""}>每週一篇</option>
                 </select>
@@ -108,6 +109,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <input class="input" name="cta" value="${escapeAttr(settings?.cta || "立即洽詢 Aplus 攝影棚方案")}">
               </div>
 
+              <div class="full" style="padding:12px 14px;border-radius:12px;background:#f8fafc;color:var(--muted);line-height:1.8;">
+                <strong style="color:#0f172a;">使用建議：</strong><br>
+                1. 若生成後狀態為 <strong>草稿</strong>，建議可使用「不設頻率（自由生成）」來建立內容池。<br>
+                2. 若生成後狀態為 <strong>直接發布</strong>，建議使用「每天一篇 / 每兩天一篇 / 每週一篇」控制發文節奏。<br>
+                3. 「立即測試生成一篇」不受頻率限制，適合手動補稿。
+              </div>
+
               <div class="full" style="display:flex;gap:12px;flex-wrap:wrap;">
                 <button class="btn btn--primary" type="submit">儲存設定</button>
                 <button class="btn btn--soft" type="button" id="run-once-btn">立即測試生成一篇</button>
@@ -121,7 +129,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             <h3 class="card__title">最近狀態</h3>
             <div class="stat-list">
               <div class="stat-item"><strong>啟用狀態</strong><span>${settings?.is_enabled ? "啟用中" : "停用中"}</span></div>
-              <div class="stat-item"><strong>頻率</strong><span>${formatFrequency(settings?.frequency || "daily")}</span></div>
+              <div class="stat-item"><strong>生成頻率</strong><span>${formatFrequency(settings?.frequency || "daily")}</span></div>
               <div class="stat-item"><strong>題庫數量</strong><span>${topics.length} 筆</span></div>
               <div class="stat-item"><strong>啟用題目</strong><span>${topics.filter(t => t.is_active).length} 筆</span></div>
             </div>
@@ -340,7 +348,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const now = new Date().toISOString();
         const payload = {
           title: generated.title,
-          slug: slugify(generated.title),
+          slug: `${slugify(generated.title)}-${Date.now()}`,
           summary: generated.summary,
           content: generated.content,
           category: "自動產文",
@@ -369,7 +377,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           <strong>生成成功</strong><br>
           題目：${escapeHtml(nextTopic.topic)}<br>
           標題：${escapeHtml(generated.title)}<br>
-          狀態：${escapeHtml(settings?.default_status || "draft")}
+          狀態：${escapeHtml(settings?.default_status || "draft")}<br>
+          頻率模式：${escapeHtml(formatFrequency(settings?.frequency || "daily"))}
         `;
 
         await renderPage();
@@ -407,6 +416,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function formatFrequency(value) {
     const map = {
+      unlimited: "不設頻率（自由生成）",
       daily: "每天一篇",
       every_2_days: "每兩天一篇",
       weekly: "每週一篇"
