@@ -1,15 +1,13 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  
   if (window.__adminGuardPromise) {
     const session = await window.__adminGuardPromise;
     if (!session) return;
   }
 
-  
   AdminCommon.renderLayout(
     "dashboard",
     "總覽 Dashboard",
-    "掌握文章、流量、名單與轉換成效。"
+    "掌握文章、流量、名單、排程與轉換成效。"
   );
 
   const root = document.getElementById("page-root");
@@ -25,15 +23,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  const allArticles = stats.articles || [];
+  const publishedArticles = stats.published || [];
   const latestLeads = (stats.leads || []).slice(0, 6);
-  const publishedCount = (stats.published || []).length;
+
+  const publishedCount = publishedArticles.length;
+  const draftCount = allArticles.filter((item) => item.status === "draft").length;
+  const scheduledArticles = allArticles
+    .filter((item) => item.status === "scheduled")
+    .sort((a, b) => {
+      const aTime = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity;
+      const bTime = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity;
+      return aTime - bTime;
+    });
+
+  const scheduledCount = scheduledArticles.length;
+  const upcomingScheduled = scheduledArticles.slice(0, 5);
 
   const topRows =
     (stats.topArticles || [])
       .map(({ article, analytics }, idx) => `
         <tr>
           <td>${idx + 1}</td>
-          <td><strong>${article.title}</strong></td>
+          <td><strong>${escapeHtml(article.title)}</strong></td>
           <td>${analytics.pv || 0}</td>
           <td>${analytics.leads || 0}</td>
           <td>${analytics.conversionRate || 0}%</td>
@@ -42,22 +54,38 @@ document.addEventListener("DOMContentLoaded", async () => {
       .join("") || `<tr><td colspan="5">目前尚無資料</td></tr>`;
 
   const leadRows =
-  latestLeads
-    .map(
-      (lead) => `
-      <tr>
-        <td>${lead.name || "-"}</td>
-        <td>${lead.contact || "-"}</td>
-        <td>${lead.sourceArticleTitle || "-"}</td>
-        <td>${AdminCommon.statusBadge(lead.status || "new")}</td>
-        <td>${AdminCommon.formatDate(lead.createdAt)}</td>
-      </tr>
-    `
-    )
-    .join("") || `<tr><td colspan="5">目前尚無名單</td></tr>`;
+    latestLeads
+      .map(
+        (lead) => `
+        <tr>
+          <td>${escapeHtml(lead.name || "-")}</td>
+          <td>${escapeHtml(lead.contact || "-")}</td>
+          <td>${escapeHtml(lead.sourceArticleTitle || "-")}</td>
+          <td>${AdminCommon.statusBadge(lead.status || "new")}</td>
+          <td>${AdminCommon.formatDate(lead.createdAt)}</td>
+        </tr>
+      `
+      )
+      .join("") || `<tr><td colspan="5">目前尚無名單</td></tr>`;
 
-  // 👉 現在沒有 analytics table，先用 leads 當指標
-  const chartData = (stats.published || []).slice(0, 6).map((article) => {
+  const upcomingRows =
+    upcomingScheduled
+      .map(
+        (article) => `
+        <tr>
+          <td><strong>${escapeHtml(article.title)}</strong></td>
+          <td>${escapeHtml(article.category || "-")}</td>
+          <td>${AdminCommon.formatDate(article.scheduledAt)}</td>
+          <td>
+            <a class="btn btn--line" href="./content.html">查看</a>
+          </td>
+        </tr>
+      `
+      )
+      .join("") || `<tr><td colspan="4">目前沒有排程中的文章</td></tr>`;
+
+  // 目前先用 published 文章的詢問數做簡單圖表
+  const chartData = publishedArticles.slice(0, 6).map((article) => {
     const leadCount = (stats.leads || []).filter(
       (l) => l.sourceArticleId === article.id
     ).length;
@@ -71,16 +99,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
   });
 
-  const maxPv = Math.max(
-    ...(chartData.map((item) => Number(item.analytics.pv) || 0)),
+  const maxValue = Math.max(
+    ...(chartData.map((item) => Number(item.analytics.leads) || 0)),
     10
   );
 
   const bars =
     chartData
       .map((item) => {
-        const pv = Number(item.analytics.pv) || 0;
-        const height = Math.max(18, Math.round((pv / maxPv) * 200));
+        const value = Number(item.analytics.leads) || 0;
+        const height = Math.max(18, Math.round((value / maxValue) * 200));
         const short =
           item.article.title.length > 8
             ? item.article.title.slice(0, 8) + "…"
@@ -89,7 +117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return `
           <div class="chart-bar">
             <div class="chart-bar__fill" style="height:${height}px"></div>
-            <div class="chart-bar__label">${short}</div>
+            <div class="chart-bar__label">${escapeHtml(short)}</div>
           </div>
         `;
       })
@@ -116,17 +144,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       <div class="card">
         <div class="card__body kpi">
-          <div class="kpi__label">轉換率</div>
-          <div class="kpi__value">${stats.conversionRate || 0}%</div>
-          <div class="kpi__sub">Leads / PV</div>
+          <div class="kpi__label">排程中文章</div>
+          <div class="kpi__value">${scheduledCount}</div>
+          <div class="kpi__sub">等待系統自動發布</div>
         </div>
       </div>
 
       <div class="card">
         <div class="card__body kpi">
-          <div class="kpi__label">平均停留時間</div>
-          <div class="kpi__value">0s</div>
-          <div class="kpi__sub">內容可讀性指標</div>
+          <div class="kpi__label">轉換率</div>
+          <div class="kpi__value">${stats.conversionRate || 0}%</div>
+          <div class="kpi__sub">Leads / PV</div>
         </div>
       </div>
     </section>
@@ -189,15 +217,49 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       <div class="card">
         <div class="card__body">
+          <div class="toolbar">
+            <h3 class="card__title" style="margin:0;">即將發布文章</h3>
+            <a href="./content.html" class="link-muted">內容管理</a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>標題</th>
+                  <th>分類</th>
+                  <th>排程時間</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>${upcomingRows}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:20px;">
+      <div class="card">
+        <div class="card__body">
           <h3 class="card__title">管理建議</h3>
           <div class="stat-list">
-            <div class="stat-item"><strong>內容數量</strong><span>${(stats.articles || []).length} 篇</span></div>
+            <div class="stat-item"><strong>內容數量</strong><span>${allArticles.length} 篇</span></div>
             <div class="stat-item"><strong>已發布</strong><span>${publishedCount} 篇</span></div>
-            <div class="stat-item"><strong>草稿</strong><span>${(stats.articles || []).filter((item) => item.status === "draft").length} 篇</span></div>
-            <div class="stat-item"><strong>下一步</strong><span>持續產出內容並導入流量</span></div>
+            <div class="stat-item"><strong>草稿</strong><span>${draftCount} 篇</span></div>
+            <div class="stat-item"><strong>排程中</strong><span>${scheduledCount} 篇</span></div>
+            <div class="stat-item"><strong>下一步</strong><span>檢查草稿品質並安排發布節奏</span></div>
           </div>
         </div>
       </div>
     </section>
   `;
 });
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
