@@ -22,6 +22,7 @@ function mapArticleRow(row) {
     status: row.status || "draft",
     seoTitle: row.seo_title || "",
     seoDescription: row.seo_description || "",
+    scheduledAt: row.scheduled_at || null,
     publishedAt: row.published_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -47,16 +48,20 @@ async function createArticle(payload) {
   const supabase = window.supabaseClient;
   const now = new Date().toISOString();
 
+  const status = payload.status || "draft";
+  const scheduledAt = payload.scheduledAt || payload.scheduled_at || null;
+
   const insertData = {
     title: payload.title || "未命名文章",
     slug: payload.slug || slugify(payload.title || "article"),
     summary: payload.summary || "",
     content: payload.content || "",
     category: payload.category || "文章",
-    status: payload.status || "draft",
+    status,
     seo_title: payload.seoTitle || payload.title || "未命名文章",
     seo_description: payload.seoDescription || payload.summary || "",
-    published_at: payload.status === "published" ? now : null,
+    scheduled_at: status === "scheduled" ? scheduledAt : null,
+    published_at: status === "published" ? now : null,
     updated_at: now
   };
 
@@ -80,16 +85,37 @@ async function updateArticle(id, patch = {}) {
   };
 
   if (patch.title !== undefined) updateData.title = patch.title;
-  if (patch.slug !== undefined) updateData.slug = patch.slug || slugify(patch.title || "");
+  if (patch.slug !== undefined) {
+    updateData.slug = patch.slug || slugify(patch.title || "");
+  }
   if (patch.summary !== undefined) updateData.summary = patch.summary;
   if (patch.content !== undefined) updateData.content = patch.content;
   if (patch.category !== undefined) updateData.category = patch.category;
-  if (patch.status !== undefined) {
-    updateData.status = patch.status;
-    updateData.published_at = patch.status === "published" ? now : null;
-  }
   if (patch.seoTitle !== undefined) updateData.seo_title = patch.seoTitle;
   if (patch.seoDescription !== undefined) updateData.seo_description = patch.seoDescription;
+
+  if (patch.scheduledAt !== undefined || patch.scheduled_at !== undefined) {
+    updateData.scheduled_at = patch.scheduledAt ?? patch.scheduled_at ?? null;
+  }
+
+  if (patch.status !== undefined) {
+    updateData.status = patch.status;
+
+    if (patch.status === "published") {
+      updateData.published_at = now;
+      updateData.scheduled_at = null;
+    } else if (patch.status === "scheduled") {
+      if (patch.scheduledAt !== undefined || patch.scheduled_at !== undefined) {
+        updateData.scheduled_at = patch.scheduledAt ?? patch.scheduled_at ?? null;
+      }
+      // scheduled 不改 published_at
+    } else if (patch.status === "draft") {
+      updateData.published_at = null;
+      if (patch.scheduledAt === null || patch.scheduled_at === null) {
+        updateData.scheduled_at = null;
+      }
+    }
+  }
 
   const { data, error } = await supabase
     .from("articles")
