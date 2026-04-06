@@ -59,6 +59,7 @@ async function initPage() {
                   <th>標題</th>
                   <th>狀態</th>
                   <th>分類</th>
+                  <th>排程時間</th>
                   <th>PV</th>
                   <th>Leads</th>
                   <th>更新時間</th>
@@ -82,11 +83,6 @@ async function initPage() {
               (lead) => lead.sourceArticleId === article.id
             ).length;
 
-            const scheduleMeta =
-              article.status === "scheduled" && article.scheduledAt
-                ? `<div class="inline-meta"><span>排程：${AdminCommon.formatDate(article.scheduledAt)}</span></div>`
-                : "";
-
             return `
               <tr>
                 <td>
@@ -94,10 +90,10 @@ async function initPage() {
                   <div class="inline-meta">
                     <span>slug: ${escapeHtml(article.slug)}</span>
                   </div>
-                  ${scheduleMeta}
                 </td>
                 <td>${AdminCommon.statusBadge(article.status)}</td>
                 <td>${escapeHtml(article.category || "-")}</td>
+                <td>${AdminCommon.formatDate(article.scheduledAt)}</td>
                 <td>0</td>
                 <td>${articleLeads}</td>
                 <td>${AdminCommon.formatDate(article.updatedAt)}</td>
@@ -114,7 +110,7 @@ async function initPage() {
               </tr>
             `;
           })
-          .join("") || `<tr><td colspan="7">目前沒有文章</td></tr>`;
+          .join("") || `<tr><td colspan="8">目前沒有文章</td></tr>`;
     };
 
     drawRows(articles);
