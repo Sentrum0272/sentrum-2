@@ -86,38 +86,40 @@ document.addEventListener("DOMContentLoaded", async () => {
   let generated = null;
   let isSubmitting = false;
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
+  form.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const fd = new FormData(form);
-    const topic = fd.get("topic") || "";
-    const industry = fd.get("industry") || "";
-    const location = fd.get("location") || "";
-    const tone = fd.get("tone") || "專業";
-    const category = fd.get("category") || "文章";
-    const cta = fd.get("cta") || "立即聯絡我們";
+  const fd = new FormData(form);
+  const topic = fd.get("topic") || "";
+  const industry = fd.get("industry") || "";
+  const location = fd.get("location") || "";
+  const tone = fd.get("tone") || "專業";
+  const category = fd.get("category") || "文章";
+  const cta = fd.get("cta") || "立即聯絡我們";
 
-    const title = `${topic}完整解析：${location}${industry}如何更有效執行？`;
-    const summary = `從需求確認、設備配置到執行流程，快速掌握 ${topic} 的規劃重點，協助企業更有效安排內容製作。`;
+  preview.innerHTML = `
+    <div class="preview__eyebrow">AI PREVIEW</div>
+    <h2 class="preview__title">生成中...</h2>
+    <p class="preview__summary">正在向本機 Ollama 取得內容，請稍候。</p>
+  `;
 
-    const content = `
-      <p>當企業準備進行 ${topic} 時，最常見的問題不是只有預算，而是整體流程是否清楚、設備是否到位，以及是否有人可以協助現場執行。</p>
-      <h2>一、先確認內容目標與用途</h2>
-      <p>建議先釐清是直播、節目錄製、訪談內容還是產品說明影片，這會直接影響場地與機位配置。</p>
-      <h2>二、確認設備與技術支援</h2>
-      <p>如果希望流程更穩定，建議選擇可同時提供攝影機、燈光、收音與導播支援的場地，降低現場臨時調整成本。</p>
-      <h2>三、用專案方式評估時程與預算</h2>
-      <p>${tone}型內容建議從腳本、現場、後製與上架時程一起看，整體效率會更高。</p>
-    `;
+  try {
+    const result = await window.OllamaClient.generateWithOllama({
+      industry,
+      location,
+      topic,
+      tone,
+      cta
+    });
 
     generated = {
-      title,
-      slug: slugify(title),
-      summary,
-      content,
+      title: result.title,
+      slug: slugify(result.title),
+      summary: result.summary,
+      content: result.content,
       category,
-      seoTitle: `${title}｜Aplus`,
-      seoDescription: summary,
+      seoTitle: result.seoTitle,
+      seoDescription: result.seoDescription,
       ctaText: cta
     };
 
@@ -154,7 +156,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     document
       .getElementById("apply-publish")
       .addEventListener("click", () => applyGenerated("published"));
-  });
+  } catch (error) {
+    console.error(error);
+    preview.innerHTML = `
+      <div class="preview__eyebrow">AI PREVIEW</div>
+      <h2 class="preview__title">生成失敗</h2>
+      <p class="preview__summary">${error.message}</p>
+    `;
+  }
+});
 
   async function applyGenerated(status) {
     if (!generated || isSubmitting) return;
