@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   AdminCommon.renderLayout(
     "generate",
     "AI 內容生成",
-    "用 mock 生成文章草稿，再套用為可發布內容。"
+    "使用本機 Ollama 生成文章草稿，再套用為可發布內容。"
   );
 
   const root = document.getElementById("page-root");
@@ -20,7 +20,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!supabase) {
     console.error("Supabase client 未載入");
-    root.innerHTML = `<div class="card"><div class="card__body">Supabase 尚未設定完成。</div></div>`;
+    root.innerHTML = `
+      <div class="card">
+        <div class="card__body">Supabase 尚未設定完成。</div>
+      </div>
+    `;
+    return;
+  }
+
+  if (!window.OllamaClient?.generateWithOllama) {
+    console.error("OllamaClient 未載入");
+    root.innerHTML = `
+      <div class="card">
+        <div class="card__body">Ollama 尚未設定完成，請確認 ollama-client.js 是否已正確載入。</div>
+      </div>
+    `;
     return;
   }
 
@@ -65,7 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             </div>
 
             <div class="full">
-              <button class="btn btn--primary" type="submit">生成內容</button>
+              <button class="btn btn--primary" id="generate-btn" type="submit">生成內容</button>
             </div>
           </form>
         </div>
@@ -83,88 +97,111 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const form = document.getElementById("generate-form");
   const preview = document.getElementById("generate-preview");
+  const generateBtn = document.getElementById("generate-btn");
+
   let generated = null;
+  let isGenerating = false;
   let isSubmitting = false;
 
   form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const fd = new FormData(form);
-  const topic = fd.get("topic") || "";
-  const industry = fd.get("industry") || "";
-  const location = fd.get("location") || "";
-  const tone = fd.get("tone") || "專業";
-  const category = fd.get("category") || "文章";
-  const cta = fd.get("cta") || "立即聯絡我們";
+    if (isGenerating) return;
+    isGenerating = true;
 
-  preview.innerHTML = `
-    <div class="preview__eyebrow">AI PREVIEW</div>
-    <h2 class="preview__title">生成中...</h2>
-    <p class="preview__summary">正在向本機 Ollama 取得內容，請稍候。</p>
-  `;
+    if (generateBtn) {
+      generateBtn.disabled = true;
+      generateBtn.textContent = "生成中...";
+    }
 
-  try {
-    const result = await window.OllamaClient.generateWithOllama({
-      industry,
-      location,
-      topic,
-      tone,
-      cta
-    });
-
-    generated = {
-      title: result.title,
-      slug: slugify(result.title),
-      summary: result.summary,
-      content: result.content,
-      category,
-      seoTitle: result.seoTitle,
-      seoDescription: result.seoDescription,
-      ctaText: cta
-    };
+    const fd = new FormData(form);
+    const topic = String(fd.get("topic") || "").trim();
+    const industry = String(fd.get("industry") || "").trim();
+    const location = String(fd.get("location") || "").trim();
+    const tone = String(fd.get("tone") || "專業").trim();
+    const category = String(fd.get("category") || "文章").trim();
+    const cta = String(fd.get("cta") || "立即聯絡我們").trim();
 
     preview.innerHTML = `
       <div class="preview__eyebrow">AI PREVIEW</div>
-      <h2 class="preview__title">${generated.title}</h2>
-      <p class="preview__summary">${generated.summary}</p>
+      <h2 class="preview__title">生成中...</h2>
+      <p class="preview__summary">正在向本機 Ollama 取得內容，請稍候。</p>
+    `;
 
-      <div class="inline-meta">
-        <span>Slug：${generated.slug}</span>
-        <span>分類：${generated.category}</span>
-      </div>
+    try {
+      const result = await window.OllamaClient.generateWithOllama({
+        industry,
+        location,
+        topic,
+        tone,
+        cta
+      });
 
-      <div class="preview__content">${generated.content}</div>
+      generated = {
+        title: result.title,
+        slug: slugify(result.title),
+        summary: result.summary,
+        content: result.content,
+        category,
+        seoTitle: result.seoTitle,
+        seoDescription: result.seoDescription,
+        ctaText: cta
+      };
 
-      <div class="preview__cta">
-        <strong>${generated.ctaText}</strong>
-        <div style="margin-top:8px;color:var(--muted)">
-          SEO Title：${generated.seoTitle}<br>
-          SEO Description：${generated.seoDescription}
+      preview.innerHTML = `
+        <div class="preview__eyebrow">AI PREVIEW</div>
+        <h2 class="preview__title">${escapeHtml(generated.title)}</h2>
+        <p class="preview__summary">${escapeHtml(generated.summary)}</p>
+
+        <div class="inline-meta">
+          <span>Slug：${escapeHtml(generated.slug)}</span>
+          <span>分類：${escapeHtml(generated.category)}</span>
         </div>
-      </div>
 
-      <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn btn--primary" id="apply-draft" type="button">套用為草稿</button>
-        <button class="btn btn--soft" id="apply-publish" type="button">直接發布</button>
-      </div>
-    `;
+        <div class="preview__content">${generated.content}</div>
 
-    document
-      .getElementById("apply-draft")
-      .addEventListener("click", () => applyGenerated("draft"));
+        <div class="preview__cta">
+          <strong>${escapeHtml(generated.ctaText)}</strong>
+          <div style="margin-top:8px;color:var(--muted)">
+            SEO Title：${escapeHtml(generated.seoTitle)}<br>
+            SEO Description：${escapeHtml(generated.seoDescription)}
+          </div>
+        </div>
 
-    document
-      .getElementById("apply-publish")
-      .addEventListener("click", () => applyGenerated("published"));
-  } catch (error) {
-    console.error(error);
-    preview.innerHTML = `
-      <div class="preview__eyebrow">AI PREVIEW</div>
-      <h2 class="preview__title">生成失敗</h2>
-      <p class="preview__summary">${error.message}</p>
-    `;
-  }
-});
+        <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn--primary" id="apply-draft" type="button">套用為草稿</button>
+          <button class="btn btn--soft" id="apply-publish" type="button">直接發布</button>
+        </div>
+      `;
+
+      document
+        .getElementById("apply-draft")
+        .addEventListener("click", () => applyGenerated("draft"));
+
+      document
+        .getElementById("apply-publish")
+        .addEventListener("click", () => applyGenerated("published"));
+    } catch (error) {
+      console.error("Ollama 生成失敗：", error);
+      preview.innerHTML = `
+        <div class="preview__eyebrow">AI PREVIEW</div>
+        <h2 class="preview__title">生成失敗</h2>
+        <p class="preview__summary">${escapeHtml(error.message)}</p>
+        <div class="preview__cta">
+          請確認：
+          <br>1. Ollama 是否已啟動
+          <br>2. gemma3:4b 是否已下載
+          <br>3. 瀏覽器是否被 CORS 擋住
+        </div>
+      `;
+    } finally {
+      isGenerating = false;
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.textContent = "生成內容";
+      }
+    }
+  });
 
   async function applyGenerated(status) {
     if (!generated || isSubmitting) return;
@@ -204,19 +241,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
 
       window.location.href = "./content.html";
+    } catch (error) {
+      console.error("寫入 Supabase 失敗：", error);
+      alert(`寫入失敗：${error.message}`);
     } finally {
       isSubmitting = false;
     }
   }
 
   function slugify(text = "") {
-    return text
-      .toString()
+    return String(text)
       .trim()
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9\u4e00-\u9fa5-]/g, "")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
+  }
+
+  function escapeHtml(value = "") {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 });
