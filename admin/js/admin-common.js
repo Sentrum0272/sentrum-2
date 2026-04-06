@@ -20,10 +20,6 @@ function renderLayout(pageKey, pageTitle, pageDesc = '') {
     </aside>
     <div class="main">
       <header class="topbar">
-      async function logout() {
-  await window.supabaseClient.auth.signOut();
-  window.location.href = "./login.html";
-}
         <div class="topbar__title">
           <h1>${pageTitle}</h1>
           <p>${pageDesc}</p>
@@ -47,7 +43,31 @@ function renderLayout(pageKey, pageTitle, pageDesc = '') {
       </div>
       <div class="modal__body" id="modal-body"></div>
     </div>
+    
+    <main>
+        <header class="admin-topbar">
+          <div>
+            <h1>${title}</h1>
+            <p>${desc}</p>
+          </div>
+          <div>
+            <button id="admin-logout-btn" class="btn btn--soft" type="button">登出</button>
+          </div>
+        </header>
+        <div id="page-root"></div>
+      </main>
+
+    
   </div>`;
+  
+  const logoutBtn = document.getElementById("admin-logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      await window.AdminAuth.signOutAdmin();
+    });
+  }
+
+  
   bindModalClose();
 }
 function formatDate(dateString) {
