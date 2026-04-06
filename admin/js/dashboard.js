@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", async () => {
+  
+  if (window.__adminGuardPromise) {
+    const session = await window.__adminGuardPromise;
+    if (!session) return;
+  }
+
+  
   AdminCommon.renderLayout(
     "dashboard",
     "總覽 Dashboard",
